@@ -1,10 +1,21 @@
 #include "terrain/IO/ImageExport.hpp"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include <fstream>
+#include <iostream>
 
 namespace terrain {
-  void savePNG(const std::string& filename, const std::vector<unsigned char>& pixels, int width, int height) {
-    stbi_write_png(filename.c_str(), width, height, 4, pixels.data(), width * 4);
-  }
+
+    void savePPM(const std::string& filename, const std::vector<unsigned char>& pixels, int width, int height) {
+        std::ofstream file(filename, std::ios::binary);
+        
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open " << filename << " for writing!" << std::endl;
+            return;
+        }
+
+        file << "P6\n" << width << " " << height << "\n255\n";
+        
+        file.write(reinterpret_cast<const char*>(pixels.data()), pixels.size());
+        file.close();
+    }
+
 }

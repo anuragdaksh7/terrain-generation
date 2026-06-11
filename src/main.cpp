@@ -5,7 +5,7 @@
 
 const double HEIGHT = 1000;
 const double WIDTH = 1000;
-const int NUM_POINTS = 50;
+const int NUM_POINTS = 7;
 
 int main() {
   std::cout << "Generating "<< NUM_POINTS << " voronoi seed points..." << std::endl;
