@@ -13,6 +13,7 @@ add_executable(TerrainGenerator
     src/main.cpp
     src/Map/Generator.cpp
     src/IO/ImageExport.cpp
+    src/Simulation/Tectonic.cpp
 )
 
 # 5. Tell CMake where your header files live

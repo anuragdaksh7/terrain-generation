@@ -1,8 +1,10 @@
 #include "terrain/Map/Generator.hpp"
 #include "terrain/IO/ImageExport.hpp" 
+#include "terrain/Map/Graph.hpp"
 #include <random>
 #include <iostream>
 #include <cstring>
+#include <map>
 #include <cmath>
 #include <algorithm> // Required for std::max / std::min
 
@@ -53,7 +55,7 @@ namespace terrain {
         return points;
     }
 
-    void buildVoronoiMap(const std::vector<Vector2>& points, double width, double height) {
+    MapGraph buildVoronoiMap(const std::vector<Vector2>& points, double width, double height) {
         std::cout << "[Step 1] Initializing Voronoi..." << std::endl;
 
         std::vector<jcv_point> jcv_points(points.size());
@@ -73,8 +75,79 @@ namespace terrain {
         int h = static_cast<int>(height);
         std::vector<unsigned char> pixels(w * h * 3, 0); 
 
-        std::cout << "[Step 3] Drawing lines..." << std::endl;
+        std::cout << "[Step 2.5] Converting to Map Graph and Linking Neighbors..." << std::endl;
+        terrain::MapGraph graph;
+        
+        // Dictionaries to prevent duplicate corners and edges
+        std::map<std::pair<int, int>, int> cornerLookup;
+
         const jcv_site* sites = jcv_diagram_get_sites(&diagram);
+        for (int i = 0; i < diagram.numsites; ++i) {
+            const jcv_site* site = &sites[i];
+            
+            // 1. Create the Center (The Tectonic Plate)
+            Center c;
+            c.index = site->index;
+            c.position = {site->p.x, site->p.y};
+            
+            // 2. Extract its borders and neighbors
+            const jcv_graphedge* e = site->edges;
+            while (e) {
+                // --- Process Corner 0 ---
+                int x0 = static_cast<int>(std::round(e->pos[0].x * 100.0));
+                int y0 = static_cast<int>(std::round(e->pos[0].y * 100.0));
+                std::pair<int, int> p0 = {x0, y0};
+                
+                int v0_index;
+                if (cornerLookup.find(p0) == cornerLookup.end()) {
+                    Corner corner;
+                    corner.index = graph.corners.size();
+                    corner.position = {e->pos[0].x, e->pos[0].y};
+                    graph.corners.push_back(corner);
+                    cornerLookup[p0] = corner.index;
+                    v0_index = corner.index;
+                } else {
+                    v0_index = cornerLookup[p0];
+                }
+
+                // --- Process Corner 1 ---
+                int x1 = static_cast<int>(std::round(e->pos[1].x * 100.0));
+                int y1 = static_cast<int>(std::round(e->pos[1].y * 100.0));
+                std::pair<int, int> p1 = {x1, y1};
+                
+                int v1_index;
+                if (cornerLookup.find(p1) == cornerLookup.end()) {
+                    Corner corner;
+                    corner.index = graph.corners.size();
+                    corner.position = {e->pos[1].x, e->pos[1].y};
+                    graph.corners.push_back(corner);
+                    cornerLookup[p1] = corner.index;
+                    v1_index = corner.index;
+                } else {
+                    v1_index = cornerLookup[p1];
+                }
+
+                // --- Link Corners to the Center ---
+                // We add the first corner of each edge to trace the perimeter
+                c.corners.push_back(v0_index);
+
+                // --- Link Neighboring Plates ---
+                // If this edge is shared with another site, it's a neighbor!
+                if (e->neighbor) {
+                    c.neighbors.push_back(e->neighbor->index);
+                }
+
+                e = e->next;
+            }
+
+            // Save our fully linked plate to the graph
+            graph.centers.push_back(c);
+        }
+        
+        std::cout << "Graph Linked! Center 0 has " << graph.centers[0].neighbors.size() << " neighboring plates." << std::endl;
+
+        std::cout << "[Step 3] Drawing lines..." << std::endl;
+        // const jcv_site* sites = jcv_diagram_get_sites(&diagram);
         for (int i = 0; i < diagram.numsites; ++i) {
             const jcv_site* site = &sites[i];
             const jcv_graphedge* e = site->edges;
@@ -93,6 +166,8 @@ namespace terrain {
         jcv_diagram_free(&diagram);
 
         std::cout << "[DONE] Successfully generated!" << std::endl;
+
+        return graph;
     }
 
 } // namespace terrain

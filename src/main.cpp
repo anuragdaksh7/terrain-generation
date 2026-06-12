@@ -2,17 +2,23 @@
 #include <vector>
 #include "terrain/Core/Vector2.hpp"
 #include "terrain/Map/Generator.hpp"
+#include "terrain/Simulation/Tectonic.hpp"
 
-const double HEIGHT = 1000;
-const double WIDTH = 1000;
-const int NUM_POINTS = 7;
+const double HEIGHT = 1000.0;
+const double WIDTH = 1000.0;
+const int NUM_POINTS = 500;
 
 int main() {
-  std::cout << "Generating "<< NUM_POINTS << " voronoi seed points..." << std::endl;
+  std::cout << "--- Terrain Generator Started ---" << std::endl;
 
+  // 1. Generate points
   std::vector<terrain::Vector2> seeds = terrain::generateSeedPoints(NUM_POINTS, WIDTH, HEIGHT);
 
-  terrain::buildVoronoiMap(seeds, WIDTH, HEIGHT);
+  // 2. Build the Voronoi Map Graph
+  terrain::MapGraph graph = terrain::buildVoronoiMap(seeds, WIDTH, HEIGHT);
+
+  // 3. Run the Tectonic Initialization (Make 70% of the world oceans)
+  terrain::initializePlates(graph, 0.7);
 
   return 0;
 }
