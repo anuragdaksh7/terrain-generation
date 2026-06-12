@@ -12,7 +12,7 @@ namespace terrain
     std::mt19937 gen(rd());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
-    std::uniform_real_distribution<double> elevDist(-1.0, 1.0);
+    std::uniform_real_distribution<double> elevDist(0.1, 1.0);
 
     int oceanCount = 0;
     int landCount = 0;

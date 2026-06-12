@@ -361,4 +361,68 @@ namespace terrain
         std::cout << "[DONE] Successfully saved map preview to disk!" << std::endl;
     }
 
+    void renderHeightmap(const MapGraph &graph, double width, double height)
+    {
+        std::cout << "[Step 3] Calculating Global Elevation Range for Heightmap..." << std::endl;
+        
+        double minElev = 1e9;
+        double maxElev = -1e9;
+
+        for (const auto &center : graph.centers)
+        {
+            if (center.elevation < minElev) minElev = center.elevation;
+            if (center.elevation > maxElev) maxElev = center.elevation;
+        }
+
+        std::cout << "[Step 3.1] Normalizing Heightmap (Min: " << minElev << ", Max: " << maxElev << ")..." << std::endl;
+
+        int w = static_cast<int>(width);
+        int h = static_cast<int>(height);
+        std::vector<unsigned char> pixels(w * h * 3, 0);
+
+        for (int y = 0; y < h; ++y)
+        {
+            for (int x = 0; x < w; ++x)
+            {
+                int closestCenterIndex = 0;
+                double minDistance = 1e9;
+
+                for (const auto &center : graph.centers)
+                {
+                    if (center.corners.empty())
+                        continue;
+
+                    double dx = center.position.x - x;
+                    double dy = center.position.y - y;
+                    double distSq = dx * dx + dy * dy;
+
+                    if (distSq < minDistance)
+                    {
+                        minDistance = distSq;
+                        closestCenterIndex = center.index;
+                    }
+                }
+
+                const auto &cell = graph.centers[closestCenterIndex];
+                int pixelIdx = (y * w + x) * 3;
+
+                // GLOBAL NORMALIZATION:
+                // Map [minElev, maxElev] to [0, 255]
+                double range = maxElev - minElev;
+                unsigned char val = 0;
+                if (range > 0.0001) {
+                    double norm = (cell.elevation - minElev) / range;
+                    val = static_cast<unsigned char>(std::max(0.0, std::min(1.0, norm)) * 255);
+                }
+
+                pixels[pixelIdx] = val;
+                pixels[pixelIdx + 1] = val;
+                pixels[pixelIdx + 2] = val;
+            }
+        }
+
+        terrain::savePPM("heightmap.ppm", pixels, w, h);
+        std::cout << "[DONE] Successfully saved normalized heightmap to disk!" << std::endl;
+    }
+
 } // namespace terrain

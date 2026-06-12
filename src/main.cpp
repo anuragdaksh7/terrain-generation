@@ -42,6 +42,7 @@ int main() {
 
   // 7. Render Map
   terrain::renderTectonicMap(graph, WIDTH, HEIGHT);
+  terrain::renderHeightmap(graph, WIDTH, HEIGHT);
 
   return 0;
 }
