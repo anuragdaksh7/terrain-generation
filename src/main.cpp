@@ -7,7 +7,7 @@
 
 const double HEIGHT = 1000.0;
 const double WIDTH = 1000.0;
-const int NUM_POINTS = 499;
+const int NUM_POINTS = 700;
 
 int main() {
   std::cout << "--- Terrain Generator Started ---" << std::endl;
@@ -19,10 +19,16 @@ int main() {
   terrain::MapGraph graph = terrain::buildVoronoiMap(seeds, WIDTH, HEIGHT);
 
   // 3. Run the Tectonic Initialization (Make 70% of the world oceans)
-  terrain::initializePlates(graph, 0.7);
+  terrain::initializePlates(graph, 0.5);
+  
+  // --- NEW: 3.2 Smash plates together to create massive ridges ---
+  terrain::buildMountainRanges(graph, 5); // Build 5 distinct mountain ranges!
 
   // 3.5. Optional: Smooth the terrain to create more natural landmasses and coastlines
   terrain::smoothElevations(graph, 4);
+
+  // --- NEW: 3.6 Normalize so the highest peak is perfectly 1.0 ---
+  terrain::normalizeElevations(graph);
 
   // 4. Interpolate and blend plate properties to find corner elevations
   terrain::assignCornerElevations(graph);

@@ -116,4 +116,70 @@ namespace terrain
       }
     }
   }
+
+  void buildMountainRanges(MapGraph &graph, int numRanges) {
+    std::cout << "[Tectonic] Uplifting Mountain Ranges..." << std::endl;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::vector<int> landPlates;
+    for (const auto& center : graph.centers) {
+      if (!center.isOcean) {
+        landPlates.push_back(center.index);
+      }
+    }
+
+    if (landPlates.empty()) return;
+
+    std::uniform_int_distribution<int> landDist(0, landPlates.size() - 1);
+    std::uniform_int_distribution<int> lengthDist(10, 30);
+
+    for (int i = 0; i< numRanges; ++i) {
+      int currentPlate = landPlates[landDist(gen)];
+      int rangeLength = lengthDist(gen);
+
+      for (int step = 0; step < rangeLength; ++step) {
+        graph.centers[currentPlate].elevation += 4.0;
+
+        std::vector<int> landNeighbors;
+        for (int neighborIdx : graph.centers[currentPlate].neighbors) {
+          if (neighborIdx >= 0 && neighborIdx < graph.centers.size()) {
+            if (!graph.centers[neighborIdx].isOcean) {
+              landNeighbors.push_back(neighborIdx);
+            }
+          }
+        }
+
+        if (landNeighbors.empty()) break;
+
+        std::uniform_int_distribution<int> neighborDist(0, landNeighbors.size() - 1);
+        currentPlate = landNeighbors[neighborDist(gen)];
+      }
+    }
+
+    std::cout << "[Tectonic] Built " << numRanges << " mountain ridges!" << std::endl;
+  }
+
+  void normalizeElevations(MapGraph& graph) {
+    std::cout << "[Tectonic] Normalizing land elevations to 1.0 max..." << std::endl;
+    
+    double maxElevation = 0.0;
+    
+    // Pass 1: Find the absolute highest peak on the map
+    for (const auto& center : graph.centers) {
+      if (!center.isOcean && center.elevation > maxElevation) {
+        maxElevation = center.elevation;
+      }
+    }
+
+    // Pass 2: Divide all land by that peak, scaling everything perfectly to 0.0 -> 1.0
+    if (maxElevation > 0.0) {
+      for (auto& center : graph.centers) {
+        if (!center.isOcean) {
+          center.elevation = center.elevation / maxElevation;
+        }
+      }
+    }
+  }
 }
