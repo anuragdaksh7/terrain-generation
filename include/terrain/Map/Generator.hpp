@@ -8,4 +8,5 @@ namespace terrain {
   std::vector<Vector2> generateSeedPoints(int count, double width, double height);
 
   MapGraph buildVoronoiMap(const std::vector<Vector2>& points, double width, double height);
+  void renderTectonicMap(const MapGraph& graph, double width, double height);
 }

@@ -2,8 +2,10 @@
 #include <random>
 #include <iostream>
 
-namespace terrain {
-  void initializePlates(MapGraph& graph, double waterRatio) {
+namespace terrain
+{
+  void initializePlates(MapGraph &graph, double waterRatio)
+  {
     std::cout << "\n[Tectonic] Initializing Plates (Target Water Ratio: " << waterRatio * 100 << "%)..." << std::endl;
 
     std::random_device rd;
@@ -15,14 +17,18 @@ namespace terrain {
     int oceanCount = 0;
     int landCount = 0;
 
-    for (auto& center: graph.centers) {
+    for (auto &center : graph.centers)
+    {
 
-      if (dist(gen) < waterRatio) {
+      if (dist(gen) < waterRatio)
+      {
         center.isWater = true;
         center.isOcean = true;
         center.elevation = -1.0 * elevDist(gen);
         oceanCount++;
-      } else {
+      }
+      else
+      {
         center.isWater = false;
         center.isOcean = false;
         center.elevation = elevDist(gen);
@@ -31,5 +37,83 @@ namespace terrain {
     }
 
     std::cout << "[Tectonic] World generated with " << oceanCount << " Ocean plates and " << landCount << " Continental plates." << std::endl;
+  }
+
+  void assignCornerElevations(MapGraph &graph)
+  {
+    std::cout << "[Tectonic] Calculating Corner Elevations..." << std::endl;
+
+    for (auto &corner : graph.corners)
+    {
+
+      if (corner.touches.empty())
+        continue;
+
+      double sumElevation = 0.0;
+      bool touchesOcean = false;
+      bool touchesLand = false;
+
+      // Look at every plate (Center) this corner touches
+      for (int centerIndex : corner.touches)
+      {
+        const Center &adjacentPlate = graph.centers[centerIndex];
+
+        sumElevation += adjacentPlate.elevation;
+
+        if (adjacentPlate.isOcean)
+          touchesOcean = true;
+        else
+          touchesLand = true;
+      }
+
+      // The exact average of the touching plates
+      corner.elevation = sumElevation / corner.touches.size();
+
+      // Optional physics bonus:
+      // If a corner touches BOTH land and ocean, it is officially a Coastline.
+      // You can use this later to spawn beaches or coastal cities!
+      if (touchesOcean && touchesLand)
+      {
+        // Force coastlines to be exactly at sea level (0.0) for a clean look
+        corner.elevation = 0.0;
+      }
+    }
+
+    std::cout << "[Tectonic] Assigned elevations to " << graph.corners.size() << " corners." << std::endl;
+  }
+
+  void smoothElevations(MapGraph &graph, int iterations)
+  {
+    std::cout << "[Tectonic] Smoothing Terrain (" << iterations << " passes)..." << std::endl;
+
+    for (int i = 0; i < iterations; ++i)
+    {
+      // Create a temporary array to hold the new smoothed heights
+      std::vector<double> newElevations(graph.centers.size());
+
+      for (auto &center : graph.centers)
+      {
+        double sum = center.elevation;
+        int count = 1;
+
+        for (int neighborIdx : center.neighbors)
+        {
+          // Only smooth land with land, and ocean with ocean.
+          // This prevents coastlines from blurring into muddy swamps!
+          if (graph.centers[neighborIdx].isOcean == center.isOcean)
+          {
+            sum += graph.centers[neighborIdx].elevation;
+            count++;
+          }
+        }
+        newElevations[center.index] = sum / count;
+      }
+
+      // Apply the smoothed heights back to the map
+      for (auto &center : graph.centers)
+      {
+        center.elevation = newElevations[center.index];
+      }
+    }
   }
 }
