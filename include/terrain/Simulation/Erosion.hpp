@@ -5,4 +5,5 @@
 namespace terrain {
   void calculateDownslopes(MapGraph& graph);
   void simulateRivers(MapGraph& graph);
+  void calculateMoisture(MapGraph& graph);
 }

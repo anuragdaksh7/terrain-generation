@@ -7,7 +7,7 @@
 
 const double HEIGHT = 1000.0;
 const double WIDTH = 1000.0;
-const int NUM_POINTS = 700;
+const int NUM_POINTS = 800;
 
 int main() {
   std::cout << "--- Terrain Generator Started ---" << std::endl;
@@ -37,7 +37,10 @@ int main() {
   terrain::calculateDownslopes(graph);
   terrain::simulateRivers(graph);
 
-  // 6. Render a gorgeous solid snapshot map to verify your world shapes!
+  // --- NEW: 6. Calculate Climate & Moisture ---
+  terrain::calculateMoisture(graph);
+
+  // 7. Render Map
   terrain::renderTectonicMap(graph, WIDTH, HEIGHT);
 
   return 0;

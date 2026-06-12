@@ -90,4 +90,52 @@ namespace terrain
 
     std::cout << "[Erosion] Rivers carved and coastlines strictly scrubbed!" << std::endl;
   }
+
+  void calculateMoisture(MapGraph& graph) {
+    std::cout << "[Biome] Calculating Global Moisture..." << std::endl;
+
+    // 1. Seed the initial moisture sources
+    for (auto& center : graph.centers) {
+      if (center.isOcean) {
+        center.moisture = 1.0; // Oceans are 100% wet
+      } else {
+        center.moisture = 0.0; // Assume dry land first
+          
+        // Check if any of this plate's corners contain a river
+        for (int cornerIdx : center.corners) {
+          if (cornerIdx >= 0 && cornerIdx < graph.corners.size()) {
+            if (graph.corners[cornerIdx].river > 0) {
+              center.moisture = 1.0; // Rivers make the land 100% wet
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Diffuse the moisture (Wind blowing rain across the continent)
+    // Doing this 3 times spreads the water nicely into the deep mainland
+    for (int pass = 0; pass < 3; ++pass) {
+      std::vector<double> newMoisture(graph.centers.size());
+
+      for (auto& center : graph.centers) {
+        double sum = center.moisture;
+        int count = 1;
+
+        for (int neighborIdx : center.neighbors) {
+          if (neighborIdx >= 0 && neighborIdx < graph.centers.size()) {
+            sum += graph.centers[neighborIdx].moisture;
+            count++;
+          }
+        }
+        newMoisture[center.index] = sum / count;
+      }
+
+      // Apply the spread moisture
+      for (auto& center : graph.centers) {
+        center.moisture = newMoisture[center.index];
+      }
+    }
+    std::cout << "[Biome] Moisture diffused successfully!" << std::endl;
+  }
 } // namespace terrain

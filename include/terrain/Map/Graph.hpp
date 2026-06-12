@@ -17,6 +17,7 @@ namespace terrain {
     std::vector<int> corners;
 
     double elevation = 0.0;
+    double moisture = 0.0;
     bool isWater = false;
     bool isOcean = false;
   };

@@ -16,10 +16,12 @@ namespace terrain
 
     // --- The 100% Uncrashable Bresenham's Line Algorithm ---
     // --- Updated Helper function: Color-Aware Bresenham's Line Algorithm ---
+    // --- Upgraded Helper function: Thick-Brush Bresenham's Line ---
     void drawLine(std::vector<unsigned char> &image, int width, int height,
                   int x0, int y0, int x1, int y1,
-                  unsigned char r = 255, unsigned char g = 255, unsigned char b = 255)
-    { // <-- Added parameters
+                  unsigned char r = 255, unsigned char g = 255, unsigned char b = 255,
+                  int thickness = 0)
+    { // <-- NEW PARAMETER
 
         x0 = std::max(0, std::min(width - 1, x0));
         y0 = std::max(0, std::min(height - 1, y0));
@@ -32,13 +34,30 @@ namespace terrain
 
         while (true)
         {
-            int index = (y0 * width + x0) * 3;
 
-            if (index >= 0 && index + 2 < static_cast<int>(image.size()))
+            // --- NEW: The Circular Brush ---
+            // Instead of coloring 1 pixel, we color a radius around the coordinate
+            for (int ty = -thickness; ty <= thickness; ++ty)
             {
-                image[index] = r;     // <-- Use custom R
-                image[index + 1] = g; // <-- Use custom G
-                image[index + 2] = b; // <-- Use custom B
+                for (int tx = -thickness; tx <= thickness; ++tx)
+                {
+
+                    // tx*tx + ty*ty <= r*r creates a smooth circle instead of a square
+                    if (tx * tx + ty * ty <= thickness * thickness)
+                    {
+                        int nx = x0 + tx;
+                        int ny = y0 + ty;
+
+                        // Safety check to prevent crashing if a thick brush goes off-screen
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height)
+                        {
+                            int index = (ny * width + nx) * 3;
+                            image[index] = r;
+                            image[index + 1] = g;
+                            image[index + 2] = b;
+                        }
+                    }
+                }
             }
 
             if (x0 == x1 && y0 == y1)
@@ -218,7 +237,8 @@ namespace terrain
 
                 for (const auto &center : graph.centers)
                 {
-                    if (center.corners.empty()) continue;
+                    if (center.corners.empty())
+                        continue;
 
                     double dx = center.position.x - x;
                     double dy = center.position.y - y;
@@ -245,56 +265,94 @@ namespace terrain
                 }
                 else
                 {
-                    // LANDMASS: Green -> Brown -> White based on height
-                    int height = static_cast<int>(cell.elevation * 255);
-                    height = std::max(0, std::min(255, height));
+                    // --- THE BIOME SHADER ---
+                    int r, g, b;
 
-                    if (height < 60)
+                    // 1. Beaches (Low elevation, touching the ocean)
+                    if (cell.elevation < 0.05)
                     {
-                        // Lowlands (Grass/Forest)
-                        pixels[pixelIdx] = 34 + height;          // R
-                        pixels[pixelIdx + 1] = 139 + height / 2; // G
-                        pixels[pixelIdx + 2] = 34;               // B
+                        r = 230;
+                        g = 210;
+                        b = 170; // Sand
                     }
-                    else if (height < 160)
+                    // 2. Mountains & Snow (High Elevation)
+                    else if (cell.elevation > 0.7)
                     {
-                        // Mountains (Dirt/Stone)
-                        int mod = height - 60;
-                        pixels[pixelIdx] = 139 + mod;     // R
-                        pixels[pixelIdx + 1] = 115 + mod; // G
-                        pixels[pixelIdx + 2] = 85 + mod;  // B
+                        r = 245;
+                        g = 245;
+                        b = 255; // Snow
                     }
+                    else if (cell.elevation > 0.5)
+                    {
+                        r = 130;
+                        g = 120;
+                        b = 110; // Bare Rock/Mountain
+                    }
+                    // 3. The Lowlands (Elevation + Moisture matrix)
                     else
                     {
-                        // Mountain Peaks (Snow)
-                        pixels[pixelIdx] = 240;     // R
-                        pixels[pixelIdx + 1] = 240; // G
-                        pixels[pixelIdx + 2] = 255; // B
+                        if (cell.moisture < 0.3)
+                        {
+                            // Dry: Desert
+                            r = 210;
+                            g = 190;
+                            b = 140;
+                        }
+                        else if (cell.moisture < 0.6)
+                        {
+                            // Medium: Grasslands / Temperate Forest
+                            r = 100;
+                            g = 180;
+                            b = 70;
+                        }
+                        else
+                        {
+                            // Wet: Deep Jungle / Swamp
+                            r = 30;
+                            g = 100;
+                            b = 40;
+                        }
                     }
+
+                    pixels[pixelIdx] = r;
+                    pixels[pixelIdx + 1] = g;
+                    pixels[pixelIdx + 2] = b;
                 }
             }
         }
 
         std::cout << "[Step 4] Saving Tectonic Elevation Map as PPM..." << std::endl;
 
-        // --- Draw Rivers ---
+        // --- Draw Rivers with Dynamic Thickness ---
         for (const auto &corner : graph.corners)
         {
-            // Only consider rendering if there is water AND it's on land
             if (corner.river > 5 && corner.downslope != -1 && corner.elevation > 0.001)
             {
                 const auto &nextCorner = graph.corners[corner.downslope];
 
-                // Double safety: Don't draw the line if the target corner is deep underwater
-                // (This allows the very last segment to touch the beach, but goes no further)
                 if (nextCorner.elevation >= 0.0)
                 {
 
-                    // Draw the river (Using Black to match your styling)
+                    // --- NEW: Calculate Thickness ---
+                    int brushThickness = 0; // Default: thin 1-pixel stream for mountains
+                    if (corner.river > 60)
+                    {
+                        brushThickness = 3; // Massive Amazon-style river mouth
+                    }
+                    else if (corner.river > 25)
+                    {
+                        brushThickness = 2; // Mid-sized merging rivers
+                    }
+                    else if (corner.river > 10)
+                    {
+                        brushThickness = 1; // Established streams
+                    }
+
                     drawLine(pixels, w, h,
                              static_cast<int>(corner.position.x), static_cast<int>(corner.position.y),
                              static_cast<int>(nextCorner.position.x), static_cast<int>(nextCorner.position.y),
-                             0, 200, 255); // R, G, B
+                             0, 200, 255,     // Color
+                             brushThickness); // Pass the dynamic thickness!
                 }
             }
         }
