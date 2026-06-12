@@ -219,7 +219,7 @@ namespace terrain
                 for (const auto &center : graph.centers)
                 {
                     if (center.corners.empty()) continue;
-                    
+
                     double dx = center.position.x - x;
                     double dy = center.position.y - y;
                     double distSq = dx * dx + dy * dy;
@@ -294,7 +294,7 @@ namespace terrain
                     drawLine(pixels, w, h,
                              static_cast<int>(corner.position.x), static_cast<int>(corner.position.y),
                              static_cast<int>(nextCorner.position.x), static_cast<int>(nextCorner.position.y),
-                             0, 0, 0); // R, G, B
+                             0, 200, 255); // R, G, B
                 }
             }
         }
